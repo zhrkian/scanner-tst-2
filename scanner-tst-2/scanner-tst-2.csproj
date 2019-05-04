@@ -41,7 +41,7 @@
     <Folder Include="Arduino\" />
   </ItemGroup>
   <ItemGroup>
-    <None Include="Arduino\sketch_may02b.ino" />
+    <None Include="Arduino\sketch_may02b\sketch_may02b.ino" />
   </ItemGroup>
   <Import Project="$(MSBuildBinPath)\Microsoft.CSharp.targets" />
 </Project>
