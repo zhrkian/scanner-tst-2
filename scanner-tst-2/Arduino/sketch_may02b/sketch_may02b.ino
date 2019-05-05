@@ -2,13 +2,17 @@ String inputString = "";
 boolean stringComplete = false; 
 String commandString = "";
 boolean isConnected = false;
-
 double period, frequency;
 int high, low;
+
+boolean read_signal = false;
+unsigned long count = 0;
 
 #define DUTY_CICLE 0.25
 
 #define DIRECTION_PIN 12
+
+#define SIGNAL_PIN 3
 
 #define HORIZONTAL_PIN 5
 #define VERTICAL_PIN 6
@@ -20,6 +24,11 @@ int high, low;
 #define END_SWITCH_LEFT 7
 #define END_SWITCH_RIGHT 8
 
+
+
+/*
+ * Распарс команды
+*/
 String getCommand () {
   if (inputString && inputString.length()) {
     int separatorIndex = inputString.indexOf("-");
@@ -33,6 +42,9 @@ String getCommand () {
   return "";
 }
 
+/*
+ * Распарс параметра
+*/
 String getParam () {
   int separatorIndex = inputString.indexOf("-");
   
@@ -43,6 +55,9 @@ String getParam () {
   return "";
 }
 
+/* Определение концевого выключателя от направления
+ * direction - направление UP, DOWN, LEFT, RIGHT
+*/
 int getEndSwitch (String direction) {
   int direction_state = digitalRead(DIRECTION_PIN);
   if (direction.equals("VERTICAL")) {
@@ -58,6 +73,10 @@ int getEndSwitch (String direction) {
   return END_SWITCH_RIGHT;
 }
 
+
+/* Инициализация системы с заданными параметрами
+ * f - частота в Hz
+*/
 void setSystemParams (String f) {
   frequency = f.toDouble();
   period = (1.0 / frequency) * 1000000.0;
@@ -65,6 +84,9 @@ void setSystemParams (String f) {
   low = period * (1 - DUTY_CICLE);
 }
 
+/*Генерация одиночного импульса
+ * channel - вывод двигателя
+*/
 void Pulse (int channel) {
   digitalWrite(channel, HIGH);
   delayMicroseconds(high);
@@ -72,13 +94,23 @@ void Pulse (int channel) {
   delayMicroseconds(low);
 }
 
-int TrainPulse (int channel, int count, int end_switch) {
+/* Генерация серии импульсов
+ * channel - вывод двигателя
+ * steps - кол-во шагов
+ * end_switch - концевой выключатель для выбанного направления движения
+*/
+int TrainPulse (int channel, int steps, int end_switch) {
   int end_switch_state;
   int steps_done = 0;
-  for (int i = 0; i < count; i++) {
+  for (int i = 0; i < steps; i++) {
     Pulse(channel);
-    end_switch_state = digitalRead(end_switch);
+    
+    if (end_switch) {
+      end_switch_state = digitalRead(end_switch);  
+    }
+    
     steps_done += 1;
+    
     if (end_switch_state > 0) {
       return steps_done;
     }
@@ -87,6 +119,9 @@ int TrainPulse (int channel, int count, int end_switch) {
   return steps_done;
 }
 
+/*Изменение направления движения для двигателей главного зеркала
+ * direction - направление UP, DOWN, LEFT, RIGHT
+*/
 void ToggleDirection (String direction) {
   if (direction.equals("LEFT") || direction.equals("UP")) {
     digitalWrite(DIRECTION_PIN, HIGH);
@@ -95,10 +130,62 @@ void ToggleDirection (String direction) {
   }
 }
 
+/*
+ * Центрирование системы
+*/
+void CentreSystem () {
+  int steps_done, steps_center, end_switch;
 
+  //Центрируем систему по горизонтали
+  //Двигаем главное зеркало влево до концевика
+  ToggleDirection("LEFT");
+  end_switch = getEndSwitch("HORIZONTAL");
+  steps_done = TrainPulse(HORIZONTAL_PIN, 5000, end_switch);
+  
+  //Двигаем главное зеркало вправо до концевика и получаем кол-во шагов
+  ToggleDirection("RIGHT");
+  end_switch = getEndSwitch("HORIZONTAL");
+  steps_done = TrainPulse(HORIZONTAL_PIN, 5000, end_switch);
+
+  //Двигаем главное зеркало влево на центр
+  ToggleDirection("LEFT");
+  end_switch = getEndSwitch("HORIZONTAL");
+  steps_center = steps_done / 2;
+  steps_done = TrainPulse(HORIZONTAL_PIN, steps_center, end_switch);
+
+  
+  //Центрируем систему по горизонтали
+  //Двигаем главное зеркало влево до концевика
+  ToggleDirection("UP");
+  end_switch = getEndSwitch("VERTICAL");
+  steps_done = TrainPulse(VERTICAL_PIN, 5000, end_switch);
+  
+  //Двигаем главное зеркало вправо до концевика и получаем кол-во шагов
+  ToggleDirection("DOWN");
+  end_switch = getEndSwitch("VERTICAL");
+  steps_done = TrainPulse(VERTICAL_PIN, 5000, end_switch);
+
+  //Двигаем главное зеркало влево на центр
+  ToggleDirection("UP");
+  end_switch = getEndSwitch("VERTICAL");
+  steps_center = steps_done / 2;
+  steps_done = TrainPulse(VERTICAL_PIN, steps_center, end_switch);
+  
+}
+
+void PulseCounter () {
+  if (read_signal) {
+    count += 1;  
+  }
+}
 
 void setup () {
   Serial.begin(9600);
+  
+  pinMode(SIGNAL_PIN, INPUT);
+  attachInterrupt(digitalPinToInterrupt(SIGNAL_PIN), PulseCounter, RISING);
+//  NVIC_SET_PRIORITY(IRQ_PORTA, 0);
+  
   pinMode(END_SWITCH_UP, INPUT);
   pinMode(END_SWITCH_DOWN, INPUT);
   pinMode(END_SWITCH_LEFT, INPUT);
@@ -135,13 +222,23 @@ void loop () {
       int end_switch = getEndSwitch("VERTICAL");
       int steps_done = TrainPulse(VERTICAL_PIN, steps, end_switch);
       Serial.println("COMMAND = " + command + " PARAM = " + param + " STEPS_DONE = " + steps_done + " END_SWITCH = " + end_switch + " HIGHT = " + HIGH + " LOW = " + LOW);
+    } else if (command.equals("READ")) {
+      if (param.equals("START")) {
+        count = 0;
+        read_signal = true;
+        Serial.println("READ-START");
+      } else if (param.equals("STOP")) {
+        read_signal = false;
+        char buf[50];
+        sprintf(buf, "%lu", count);
+        String str = String(buf);
+        count = 0;
+        Serial.println("READ-STOP COUNTS = " + str);
+      }
     }
-    
     inputString = "";
   }
 }
-
-///Test
 
 void serialEvent () {
   while (Serial.available()) {
