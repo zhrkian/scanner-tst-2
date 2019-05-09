@@ -16,6 +16,7 @@ unsigned long count = 0;
 
 #define HORIZONTAL_PIN 5
 #define VERTICAL_PIN 6
+
 #define PHEM_LEFT_PIN 9
 #define PHEM_RIGHT_PIN 10
 
@@ -59,18 +60,24 @@ String getParam () {
  * direction - направление UP, DOWN, LEFT, RIGHT
 */
 int getEndSwitch (String direction) {
-  int direction_state = digitalRead(DIRECTION_PIN);
+  int direction_state;
+  
   if (direction.equals("VERTICAL")) {
+    direction_state = digitalRead(DIRECTION_PIN);
     if (direction_state > 0) {
-      return END_SWITCH_UP;
+      return END_SWITCH_DOWN;
     }
-    return END_SWITCH_DOWN;
+    return END_SWITCH_UP;
+  }
+
+  if (direction.equals("HORIZONTAL")) {
+    direction_state = digitalRead(DIRECTION_PIN);
+    if (direction_state > 0) {
+      return END_SWITCH_RIGHT;
+    }
+    return END_SWITCH_LEFT;  
   }
   
-  if (direction_state > 0) {
-    return END_SWITCH_LEFT;
-  }
-  return END_SWITCH_RIGHT;
 }
 
 
@@ -103,17 +110,17 @@ int TrainPulse (int channel, int steps, int end_switch) {
   int end_switch_state;
   int steps_done = 0;
   for (int i = 0; i < steps; i++) {
-    Pulse(channel);
-    
     if (end_switch) {
       end_switch_state = digitalRead(end_switch);  
     }
     
-    steps_done += 1;
-    
     if (end_switch_state > 0) {
       return steps_done;
     }
+    
+    Pulse(channel);
+    
+    steps_done += 1;
   }
 
   return steps_done;
@@ -121,9 +128,13 @@ int TrainPulse (int channel, int steps, int end_switch) {
 
 /*Изменение направления движения для двигателей главного зеркала
  * direction - направление UP, DOWN, LEFT, RIGHT
+ * RIGHT - HIGH
+ * LEFT - LOW
+ * DOWN - HIGH
+ * UP - LOW
 */
 void ToggleDirection (String direction) {
-  if (direction.equals("LEFT") || direction.equals("UP")) {
+  if (direction.equals("RIGHT") || direction.equals("DOWN")) {
     digitalWrite(DIRECTION_PIN, HIGH);
   } else {
     digitalWrite(DIRECTION_PIN, LOW);
@@ -140,12 +151,12 @@ void CentreSystem () {
   //Двигаем главное зеркало влево до концевика
   ToggleDirection("LEFT");
   end_switch = getEndSwitch("HORIZONTAL");
-  steps_done = TrainPulse(HORIZONTAL_PIN, 5000, end_switch);
+  steps_done = TrainPulse(HORIZONTAL_PIN, 3300, end_switch);
   
   //Двигаем главное зеркало вправо до концевика и получаем кол-во шагов
   ToggleDirection("RIGHT");
   end_switch = getEndSwitch("HORIZONTAL");
-  steps_done = TrainPulse(HORIZONTAL_PIN, 5000, end_switch);
+  steps_done = TrainPulse(HORIZONTAL_PIN, 3300, end_switch);
 
   //Двигаем главное зеркало влево на центр
   ToggleDirection("LEFT");
@@ -158,25 +169,32 @@ void CentreSystem () {
   //Двигаем главное зеркало влево до концевика
   ToggleDirection("UP");
   end_switch = getEndSwitch("VERTICAL");
-  steps_done = TrainPulse(VERTICAL_PIN, 5000, end_switch);
+  steps_done = TrainPulse(VERTICAL_PIN, 3300, end_switch);
   
   //Двигаем главное зеркало вправо до концевика и получаем кол-во шагов
   ToggleDirection("DOWN");
   end_switch = getEndSwitch("VERTICAL");
-  steps_done = TrainPulse(VERTICAL_PIN, 5000, end_switch);
+  steps_done = TrainPulse(VERTICAL_PIN, 3300, end_switch);
 
   //Двигаем главное зеркало влево на центр
   ToggleDirection("UP");
   end_switch = getEndSwitch("VERTICAL");
   steps_center = steps_done / 2;
   steps_done = TrainPulse(VERTICAL_PIN, steps_center, end_switch);
-  
 }
 
 void PulseCounter () {
   if (read_signal) {
     count += 1;  
   }
+}
+
+int testEnd () {
+  int l = digitalRead(END_SWITCH_LEFT);
+  int r = digitalRead(END_SWITCH_RIGHT);
+  int u = digitalRead(END_SWITCH_UP);
+  int d = digitalRead(END_SWITCH_DOWN);
+  return r;
 }
 
 void setup () {
@@ -213,16 +231,27 @@ void loop () {
       ToggleDirection(param);
       Serial.println(command + " " + param);
     } else if (command.equals("MOVE_HORIZONTAL")) {
+      
       int steps = param.toInt();
       int end_switch = getEndSwitch("HORIZONTAL");
       int steps_done = TrainPulse(HORIZONTAL_PIN, steps, end_switch);
       Serial.println("COMMAND = " + command + " PARAM = " + param + " STEPS_DONE = " + steps_done + " END_SWITCH = " + end_switch);
+      
     } else if (command.equals("MOVE_VERTICAL")) {
       int steps = param.toInt();
       int end_switch = getEndSwitch("VERTICAL");
       int steps_done = TrainPulse(VERTICAL_PIN, steps, end_switch);
       Serial.println("COMMAND = " + command + " PARAM = " + param + " STEPS_DONE = " + steps_done + " END_SWITCH = " + end_switch + " HIGHT = " + HIGH + " LOW = " + LOW);
-    } else if (command.equals("READ")) {
+    } else 
+//    if (command.equals("READ")) {
+//      int res = testEnd();
+//      Serial.println(res);
+//    } else 
+    if (command.equals("CENTRE_SYSTEM")) {
+      CentreSystem();
+      Serial.println("CENTRE DONE");
+    }
+    else if (command.equals("READ")) {
       if (param.equals("START")) {
         count = 0;
         read_signal = true;

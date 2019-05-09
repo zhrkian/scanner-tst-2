@@ -3,8 +3,23 @@ using System.IO.Ports;
 using System.Threading;
 using System.Threading.Tasks;
 
+
 namespace scannertst2
 {
+    class Scanner
+    {
+        private double Frequency;
+
+        public Scanner (double frequency)
+        {
+            Frequency = frequency;
+        }
+
+        public string ResultParser ()
+        {
+            return "";
+        }
+    }
     class MainClass
     {
         protected static string PortName = "/dev/tty.wchusbserial1420";
