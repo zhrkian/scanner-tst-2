@@ -44,8 +44,14 @@ namespace scannertst2
                 Port.Close();
             } else
             {
+                long unixTimestampStart = DateTimeOffset.Now.ToUnixTimeMilliseconds();
+
                 Port.WriteLine(command);
                 Console.WriteLine("Arduino response " + Port.ReadLine());
+
+                long unixTimestampStop = DateTimeOffset.Now.ToUnixTimeMilliseconds();
+                Console.WriteLine("Time " + (unixTimestampStop - unixTimestampStart));
+
                 CommandsHandler();
             }
         }

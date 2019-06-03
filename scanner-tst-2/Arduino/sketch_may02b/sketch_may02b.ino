@@ -107,8 +107,9 @@ void Pulse (int channel) {
  * end_switch - концевой выключатель для выбанного направления движения
 */
 int TrainPulse (int channel, int steps, int end_switch) {
-  int end_switch_state;
+  int end_switch_state = 0;
   int steps_done = 0;
+  
   for (int i = 0; i < steps; i++) {
     if (end_switch) {
       end_switch_state = digitalRead(end_switch);  
@@ -124,6 +125,15 @@ int TrainPulse (int channel, int steps, int end_switch) {
   }
 
   return steps_done;
+}
+
+unsigned long TrainPulseRead (int channel, int steps) {
+  read_signal = true;
+  for (int i = 0; i < steps; i++) {
+    Pulse(channel);
+  }
+  read_signal = false;
+  return count;
 }
 
 /*Изменение направления движения для двигателей главного зеркала
@@ -227,31 +237,47 @@ void loop () {
     if (command.equals("INIT")) {
       setSystemParams(param);
       Serial.println(command + " " + frequency + " " + period + " " + high + " " + low);
-    } else if (command.equals("DIRECTION")) {
+    } 
+    else 
+    if (command.equals("DIRECTION")) {
       ToggleDirection(param);
       Serial.println(command + " " + param);
-    } else if (command.equals("MOVE_HORIZONTAL")) {
+    } 
+    else 
+    if (command.equals("MOVE_HORIZONTAL")) {
       
       int steps = param.toInt();
       int end_switch = getEndSwitch("HORIZONTAL");
       int steps_done = TrainPulse(HORIZONTAL_PIN, steps, end_switch);
       Serial.println("COMMAND = " + command + " PARAM = " + param + " STEPS_DONE = " + steps_done + " END_SWITCH = " + end_switch);
       
-    } else if (command.equals("MOVE_VERTICAL")) {
+    } 
+    else 
+    if (command.equals("MOVE_VERTICAL")) {
       int steps = param.toInt();
       int end_switch = getEndSwitch("VERTICAL");
       int steps_done = TrainPulse(VERTICAL_PIN, steps, end_switch);
       Serial.println("COMMAND = " + command + " PARAM = " + param + " STEPS_DONE = " + steps_done + " END_SWITCH = " + end_switch + " HIGHT = " + HIGH + " LOW = " + LOW);
-    } else 
-//    if (command.equals("READ")) {
-//      int res = testEnd();
-//      Serial.println(res);
-//    } else 
+    } 
+    else 
+    if (command.equals("MOVE_HORIZONTAL_READ")) {
+      int steps = param.toInt();
+      unsigned long intensity = TrainPulseRead(HORIZONTAL_PIN, steps);
+
+        char buf[50];
+        sprintf(buf, "%lu", intensity);
+        String str = String(buf);
+        count = 0;
+      
+      Serial.println("HORIZONTAL READ COUNR = " + str);
+    } 
+    else 
     if (command.equals("CENTRE_SYSTEM")) {
       CentreSystem();
       Serial.println("CENTRE DONE");
-    }
-    else if (command.equals("READ")) {
+    } 
+    else 
+    if (command.equals("READ")) {
       if (param.equals("START")) {
         count = 0;
         read_signal = true;
