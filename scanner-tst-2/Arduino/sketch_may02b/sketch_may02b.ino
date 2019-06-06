@@ -143,11 +143,13 @@ unsigned long TrainPulseRead (int channel, int steps) {
  * DOWN - HIGH
  * UP - LOW
 */
-void ToggleDirection (String direction) {
+boolean ToggleDirection (String direction) {
   if (direction.equals("RIGHT") || direction.equals("DOWN")) {
     digitalWrite(DIRECTION_PIN, HIGH);
+    return digitalRead(DIRECTION_PIN) == HIGH;
   } else {
     digitalWrite(DIRECTION_PIN, LOW);
+    return digitalRead(DIRECTION_PIN) == LOW;
   }
 }
 
@@ -233,23 +235,24 @@ void loop () {
     
     String command = getCommand();
     String param = getParam();
+
+    
+//    Serial.println(command + " COMMANDOS");
     
     if (command.equals("INIT")) {
       setSystemParams(param);
-      Serial.println(command + " " + frequency + " " + period + " " + high + " " + low);
+      Serial.println(true);
     } 
     else 
     if (command.equals("DIRECTION")) {
-      ToggleDirection(param);
-      Serial.println(command + " " + param);
+      Serial.println(ToggleDirection(param));
     } 
     else 
     if (command.equals("MOVE_HORIZONTAL")) {
-      
       int steps = param.toInt();
       int end_switch = getEndSwitch("HORIZONTAL");
       int steps_done = TrainPulse(HORIZONTAL_PIN, steps, end_switch);
-      Serial.println("COMMAND = " + command + " PARAM = " + param + " STEPS_DONE = " + steps_done + " END_SWITCH = " + end_switch);
+      Serial.println(steps_done);
       
     } 
     else 
@@ -257,7 +260,7 @@ void loop () {
       int steps = param.toInt();
       int end_switch = getEndSwitch("VERTICAL");
       int steps_done = TrainPulse(VERTICAL_PIN, steps, end_switch);
-      Serial.println("COMMAND = " + command + " PARAM = " + param + " STEPS_DONE = " + steps_done + " END_SWITCH = " + end_switch + " HIGHT = " + HIGH + " LOW = " + LOW);
+      Serial.println(steps_done);
     } 
     else 
     if (command.equals("MOVE_HORIZONTAL_READ")) {
@@ -299,11 +302,18 @@ void serialEvent () {
   while (Serial.available()) {
     char inChar = (char)Serial.read();
     
+//    Serial.println("STRING " + inputString);
+    
     if (inChar != '\n') {
+//      Serial.println(inChar);
       inputString += inChar;  
+//      Serial.println(inputString);
     }
     
     if (inChar == '\n') {
+//      Serial.println(inChar);
+//      
+//      Serial.println(inputString + " SUKO");
       stringComplete = true;
     }
   }
