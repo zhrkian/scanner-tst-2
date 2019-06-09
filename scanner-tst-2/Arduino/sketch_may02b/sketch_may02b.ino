@@ -235,9 +235,6 @@ void loop () {
     
     String command = getCommand();
     String param = getParam();
-
-    
-//    Serial.println(command + " COMMANDOS");
     
     if (command.equals("INIT")) {
       setSystemParams(param);
@@ -302,18 +299,11 @@ void serialEvent () {
   while (Serial.available()) {
     char inChar = (char)Serial.read();
     
-//    Serial.println("STRING " + inputString);
-    
     if (inChar != '\n') {
-//      Serial.println(inChar);
       inputString += inChar;  
-//      Serial.println(inputString);
     }
     
     if (inChar == '\n') {
-//      Serial.println(inChar);
-//      
-//      Serial.println(inputString + " SUKO");
       stringComplete = true;
     }
   }
